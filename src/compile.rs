@@ -9,7 +9,7 @@ pub struct CompiledFile {
 }
 
 impl CompiledFile {
-    pub fn new(alarms: Vec<AlarmDefinition>, errors: Vec<errors::Error>) -> Self {
+    pub const fn new(alarms: Vec<AlarmDefinition>, errors: Vec<errors::Error>) -> Self {
         Self { alarms, errors }
     }
 
@@ -21,7 +21,7 @@ impl CompiledFile {
         &self.errors
     }
 
-    pub fn is_clean(&self) -> bool {
+    pub const fn is_clean(&self) -> bool {
         self.errors.is_empty()
     }
 }
@@ -134,8 +134,8 @@ pub struct AlarmDefinition {
 }
 
 impl AlarmDefinition {
-    fn new(title: String, kind: alarm::AlarmType) -> Self {
-        AlarmDefinition {
+    const fn new(title: String, kind: alarm::AlarmType) -> Self {
+        Self {
             title,
             kind,
             schedules: Vec::new(),
@@ -410,7 +410,7 @@ mod tests {
             ScheduleDefinition::Monthly { rule, time } => {
                 match rule {
                     MonthlyRule::DayOfMonth(day) => assert_eq!(day, 1),
-                    _ => panic!("expected day-of-month rule"),
+                    MonthlyRule::NthWeekday(_, _) => panic!("expected daily schedule"),
                 }
                 assert_eq!(time.hour, 10);
                 assert_eq!(time.minute, 0);
@@ -438,8 +438,7 @@ mod tests {
                     YearlyRule::DayMonth(day, month) => {
                         assert_eq!(day, 25);
                         assert_eq!(month, 12);
-                    }
-                    _ => panic!("expected day/month yearly rule"),
+                    } //_ => panic!("expected day/month yearly rule"),
                 }
                 assert_eq!(time.hour, 7);
                 assert_eq!(time.minute, 30);

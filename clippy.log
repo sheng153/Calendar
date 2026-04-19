@@ -1,0 +1,112 @@
+warning: more than 3 bools in a struct
+  --> src/parser.rs:82:5
+   |
+82 | /     pub struct Days {
+83 | |         domingo: bool,
+84 | |         lunes: bool,
+85 | |         martes: bool,
+...  |
+89 | |         sabado: bool,
+90 | |     }
+   | |_____^
+   |
+   = help: consider using a state machine or refactoring bools into two-variant enums
+   = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#struct_excessive_bools
+   = note: `-W clippy::struct-excessive-bools` implied by `-W clippy::pedantic`
+   = help: to override `-W clippy::pedantic` add `#[allow(clippy::struct_excessive_bools)]`
+
+warning: casting `u16` to `u8` may truncate the value
+   --> src/parser.rs:100:27
+    |
+100 |                 let day = *day as u8;
+    |                           ^^^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#cast_possible_truncation
+    = note: `-W clippy::cast-possible-truncation` implied by `-W clippy::pedantic`
+    = help: to override `-W clippy::pedantic` add `#[allow(clippy::cast_possible_truncation)]`
+help: ... or use `try_from` and handle the error accordingly
+    |
+100 -                 let day = *day as u8;
+100 +                 let day = u8::try_from(*day);
+    |
+
+warning: casting `u16` to `u8` may truncate the value
+   --> src/parser.rs:109:37
+    |
+109 |                 let (day, month) = (*day as u8, *month as u8);
+    |                                     ^^^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+    |
+109 -                 let (day, month) = (*day as u8, *month as u8);
+109 +                 let (day, month) = (u8::try_from(*day), *month as u8);
+    |
+
+warning: casting `u16` to `u8` may truncate the value
+   --> src/parser.rs:109:49
+    |
+109 |                 let (day, month) = (*day as u8, *month as u8);
+    |                                                 ^^^^^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+    |
+109 -                 let (day, month) = (*day as u8, *month as u8);
+109 +                 let (day, month) = (*day as u8, u8::try_from(*month));
+    |
+
+warning: casting `u16` to `u8` may truncate the value
+   --> src/parser.rs:118:43
+    |
+118 |                 let (day, month, year) = (*day as u8, *month as u8, *year);
+    |                                           ^^^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+    |
+118 -                 let (day, month, year) = (*day as u8, *month as u8, *year);
+118 +                 let (day, month, year) = (u8::try_from(*day), *month as u8, *year);
+    |
+
+warning: casting `u16` to `u8` may truncate the value
+   --> src/parser.rs:118:55
+    |
+118 |                 let (day, month, year) = (*day as u8, *month as u8, *year);
+    |                                                       ^^^^^^^^^^^^
+    |
+    = help: if this is intentional allow the lint with `#[allow(clippy::cast_possible_truncation)]` ...
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#cast_possible_truncation
+help: ... or use `try_from` and handle the error accordingly
+    |
+118 -                 let (day, month, year) = (*day as u8, *month as u8, *year);
+118 +                 let (day, month, year) = (*day as u8, u8::try_from(*month), *year);
+    |
+
+warning: useless conversion to the same type: `parser::helper::Ordinal`
+   --> src/parser.rs:491:79
+    |
+491 | ...ekday, ordinal.into())),
+    |           ^^^^^^^^^^^^^^ help: consider removing `.into()`: `ordinal`
+    |
+    = help: for further information visit https://rust-lang.github.io/rust-clippy/rust-1.95.0/index.html#useless_conversion
+    = note: `-W clippy::useless-conversion` implied by `-W clippy::all`
+    = help: to override `-W clippy::all` add `#[allow(clippy::useless_conversion)]`
+
+warning: associated function `new` is never used
+   --> src/parser.rs:578:22
+    |
+577 |     impl TimeSpec {
+    |     ------------- associated function in this implementation
+578 |         pub const fn new(hour: u8, minute: u8) -> Self {
+    |                      ^^^
+    |
+    = note: `#[warn(dead_code)]` (part of `#[warn(unused)]`) on by default
+
+warning: `Calendar` (bin "Calendar" test) generated 23 warnings (run `cargo clippy --fix --bin "Calendar" -p Calendar --tests -- -W clippy::all -W clippy::pedantic -W clippy::nursery -A clippy::cargo-common-metadata` to apply 11 suggestions)
+warning: `Calendar` (bin "Calendar") generated 23 warnings (22 duplicates)
+    Finished `dev` profile [unoptimized + debuginfo] target(s) in 0.03s

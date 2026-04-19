@@ -9,7 +9,7 @@ struct AlarmKindConfig {
     pub snooze: Option<SnoozeConfig>,
 }
 
-fn default_audio_backend() -> AudioBackend {
+const fn default_audio_backend() -> AudioBackend {
     AudioBackend::Mpv
 }
 
@@ -30,14 +30,6 @@ pub enum AudioBackend {
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum NotificationLevel {
-    Info,
-    Warning,
-    Error,
-}
-
-#[derive(Debug, Clone, serde::Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct NotificationConfig {
     #[serde(default = "default_true")]
@@ -50,15 +42,7 @@ pub struct NotificationConfig {
     pub body: Option<String>,
 }
 
-#[derive(Debug, Clone, serde::Deserialize)]
-#[serde(rename_all = "snake_case")]
-pub enum NotificationUrgency {
-    Low,
-    Normal,
-    Critical,
-}
-
-fn default_true() -> bool {
+const fn default_true() -> bool {
     true
 }
 
@@ -160,12 +144,12 @@ struct MediaSession {
 }
 
 impl MediaSession {
-    fn new(child: std::process::Child) -> Self {
+    const fn new(child: std::process::Child) -> Self {
         let child = Some(child);
         Self { child }
     }
 
-    fn none() -> Self {
+    const fn none() -> Self {
         Self { child: None }
     }
 
@@ -189,7 +173,7 @@ impl MediaSession {
 
 impl Drop for MediaSession {
     fn drop(&mut self) {
-        self.stop();
+        let _ = self.stop();
     }
 }
 
@@ -262,9 +246,8 @@ fn ask_user(title: &str, config: &AlarmKindConfig) -> Result<AlarmAction, String
         .map_err(|e| format!("failed to launch zenity: {e}"))?;
 
     match status.code() {
-        Some(0) => Ok(AlarmAction::Dismiss),
+        Some(0 | 5) => Ok(AlarmAction::Dismiss),
         Some(1) => Ok(AlarmAction::Snooze),
-        Some(5) => Ok(AlarmAction::Snooze),
         other => Err(format!("zenity exited with unexpected status {other:?}")),
     }
 }

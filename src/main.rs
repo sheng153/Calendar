@@ -20,7 +20,7 @@ fn main() {
             process::exit(0);
         }
         Some(other) => {
-            eprintln!("unknown subcommand: {:?}", other);
+            eprintln!("unknown subcommand: {other:?}");
             process::exit(2);
         }
         None => {

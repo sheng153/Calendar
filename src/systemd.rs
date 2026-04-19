@@ -69,10 +69,17 @@ fn classify_units_in_dir(
             continue;
         }
 
-        if name.ends_with(".timer") {
-            stale_timers.push(name.to_string());
-        } else if name.ends_with(".service") {
-            stale_services.push(name.to_string());
+        match std::path::Path::new(name)
+            .extension()
+            .and_then(|ext| ext.to_str())
+        {
+            Some(ext) if ext.eq_ignore_ascii_case("timer") => {
+                stale_timers.push(name.to_string());
+            }
+            Some(ext) if ext.eq_ignore_ascii_case("service") => {
+                stale_services.push(name.to_string());
+            }
+            _ => {}
         }
     }
 
@@ -100,7 +107,7 @@ fn prune_stale_units(
     disable: impl Fn(&[String]) -> std::io::Result<()>,
 ) -> std::io::Result<()> {
     let entries = fs::read_dir(target_dir)?
-        .filter_map(|entry| entry.ok())
+        .filter_map(std::result::Result::ok)
         .filter_map(|entry| {
             let path = entry.path();
             if !path.is_file() {
@@ -108,7 +115,7 @@ fn prune_stale_units(
             }
             path.file_name()
                 .and_then(|n| n.to_str())
-                .map(|s| s.to_string())
+                .map(std::string::ToString::to_string)
         })
         .collect::<Vec<_>>();
 
@@ -170,7 +177,13 @@ fn desired_unit_names(rendered: &[RenderedAlarmUnits]) -> std::collections::Hash
 }
 
 fn is_managed_alarm_unit(name: &str) -> bool {
-    name.starts_with("alarm-") && (name.ends_with(".timer") || name.ends_with(".service"))
+    name.strip_prefix("alarm-").is_some()
+        && std::path::Path::new(name)
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .is_some_and(|ext| {
+                ext.eq_ignore_ascii_case("timer") || ext.eq_ignore_ascii_case("service")
+            })
 }
 
 fn disable_units(unit_names: &[String]) -> std::io::Result<()> {
@@ -180,10 +193,9 @@ fn disable_units(unit_names: &[String]) -> std::io::Result<()> {
             .status()?;
 
         if !status.success() {
-            return Err(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                format!("failed to disable {unit_name}"),
-            ));
+            return Err(std::io::Error::other(format!(
+                "failed to disable {unit_name}"
+            )));
         }
     }
 
@@ -198,8 +210,7 @@ pub fn daemon_reload_user() -> std::io::Result<()> {
     if status.success() {
         Ok(())
     } else {
-        Err(std::io::Error::new(
-            std::io::ErrorKind::Other,
+        Err(std::io::Error::other(
             "systemctl --user daemon-reload failed",
         ))
     }
@@ -213,10 +224,10 @@ pub fn enable_timers(rendered: &[RenderedAlarmUnits]) -> std::io::Result<()> {
                 .status()?;
 
             if !status.success() {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::Other,
-                    format!("failed to enable {}", timer.name),
-                ));
+                return Err(std::io::Error::other(format!(
+                    "failed to enable {}",
+                    timer.name
+                )));
             }
         }
     }
@@ -230,10 +241,10 @@ fn render_alarm_units(
     slug: &str,
     suffix: Option<&str>,
 ) -> RenderedAlarmUnits {
-    let unit_base = match suffix {
-        Some(suffix) => format!("alarm-{slug}-{suffix}"),
-        None => format!("alarm-{slug}"),
-    };
+    let unit_base = suffix.map_or_else(
+        || format!("alarm-{slug}"),
+        |suffix| format!("alarm-{slug}-{suffix}"),
+    );
 
     let service = RenderedUnit {
         name: format!("{unit_base}.service"),
@@ -333,14 +344,6 @@ fn render_on_calendar(schedule: &compile::ScheduleDefinition) -> String {
                     month, day, time.hour, time.minute
                 )
             }
-            yearly::YearlyRule::NthWeekday(weekday, ordinal) => {
-                let weekday = render_weekday(*weekday);
-                let ordinal = render_ordinal(*ordinal);
-                format!(
-                    "{weekday} *-*-*~{ordinal} {:02}:{:02}:00",
-                    time.hour, time.minute
-                )
-            }
         },
     }
 }
@@ -362,7 +365,7 @@ fn render_days(days: helper::Days) -> String {
     .join(",")
 }
 
-fn render_weekday(weekday: helper::Weekday) -> &'static str {
+const fn render_weekday(weekday: helper::Weekday) -> &'static str {
     match weekday {
         helper::Weekday::Lunes => "Mon",
         helper::Weekday::Martes => "Tue",

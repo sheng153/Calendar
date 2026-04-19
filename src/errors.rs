@@ -3,7 +3,6 @@ use std::fmt;
 #[derive(Debug, Clone)]
 pub enum Error {
     Syntax,
-    Type,
     Compile(CompileError),
 }
 
@@ -23,7 +22,7 @@ pub enum CompileError {
 }
 
 impl Error {
-    pub fn no_alarm() -> Self {
+    pub const fn no_alarm() -> Self {
         Self::Compile(CompileError::ScheduleWithoutAlarm)
     }
 
@@ -33,9 +32,9 @@ impl Error {
         })
     }
 
-    pub fn reference_not_found(reference: impl Into<String>) -> Self {
+    pub fn reference_not_found(message: impl Into<String>) -> Self {
         Self::Compile(CompileError::ReferenceNotFound {
-            file_path: reference.into(),
+            file_path: message.into(),
         })
     }
 
@@ -55,7 +54,7 @@ pub struct LineError {
 }
 
 impl LineError {
-    pub fn new(index: usize, line: String, error: Error) -> Self {
+    pub const fn new(index: usize, line: String, error: Error) -> Self {
         Self { index, line, error }
     }
 }
@@ -63,9 +62,8 @@ impl LineError {
 impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Error::Syntax => write!(f, "Syntax Error."),
-            Error::Type => write!(f, "Attempted node method on incorrect type."),
-            Error::Compile(compile_error) => write!(f, "Compile Error: {}", compile_error),
+            Self::Syntax => write!(f, "Syntax Error."),
+            Self::Compile(compile_error) => write!(f, "Compile Error: {compile_error}"),
         }
     }
 }
@@ -90,19 +88,5 @@ impl fmt::Display for CompileError {
                 write!(f, "Parse in Reference \n[file: {file_path}]\n{error}")
             }
         }
-    }
-}
-
-impl LineError {
-    pub fn index(&self) -> usize {
-        self.index
-    }
-
-    pub fn line(&self) -> &str {
-        &self.line
-    }
-
-    pub fn error(&self) -> &Error {
-        &self.error
     }
 }

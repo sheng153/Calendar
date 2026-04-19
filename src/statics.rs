@@ -34,15 +34,21 @@ pub fn composite_chain() -> &'static [&'static dyn parseable::Parseable] {
 pub fn main_scheduler_path() -> std::path::PathBuf {
     std::env::var("MAIN_SCHEDULER")
         .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| std::path::PathBuf::from("../Events.md"))
+        .map_or_else(
+            |_| std::path::PathBuf::from("../Events.md"),
+            std::path::PathBuf::from,
+        )
 }
 
 pub fn systemd_config_user() -> std::path::PathBuf {
     std::env::var("SYSTEMD_CONFIG")
         .map(std::path::PathBuf::from)
-        .unwrap_or_else(|_| {
-            std::env::home_dir()
-                .expect("Failed to locate Home dir")
-                .join(".config/systemd/user")
-        })
+        .map_or_else(
+            |_| {
+                std::env::home_dir()
+                    .expect("Failed to locate Home dir")
+                    .join(".config/systemd/user")
+            },
+            std::path::PathBuf::from,
+        )
 }

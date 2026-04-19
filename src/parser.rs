@@ -22,7 +22,7 @@ pub fn parse_file(input: &str) -> file::ParsedFile {
         },
     );
 
-    file::ParsedFile::new(kind, nodes, errors)
+    file::ParsedFile::new(nodes, errors)
 }
 
 pub fn parse_with(
@@ -101,7 +101,7 @@ pub mod helper {
 
                 if !(1..=31).contains(&day) {
                     return Err(errors::Error::Syntax);
-                };
+                }
 
                 Ok(time::DateSpec::month_and_year_agnostic(day))
             }
@@ -130,16 +130,15 @@ pub mod helper {
     pub fn parse_schedule_line(
         input: &str,
         expected: ScheduleType,
-    ) -> Result<Option<ScheduleLine>, errors::Error> {
+    ) -> Result<Option<ScheduleLine<'_>>, errors::Error> {
         let input = input.trim();
 
-        let rest = match input
+        let Some(rest) = input
             .strip_prefix("schedule:")
             .or_else(|| input.strip_prefix("date:"))
             .map(str::trim)
-        {
-            Some(rest) => rest,
-            None => return Ok(None),
+        else {
+            return Ok(None);
         };
 
         let mut parts = rest.split_whitespace().collect::<Vec<_>>();
@@ -190,7 +189,7 @@ pub mod helper {
     }
 
     impl<'a> ScheduleLine<'a> {
-        pub fn new(parts: Vec<&'a str>) -> Self {
+        pub const fn new(parts: Vec<&'a str>) -> Self {
             Self { parts }
         }
 
@@ -216,14 +215,14 @@ pub mod helper {
     }
 
     impl Ordinal {
-        pub fn from_str(input: &str) -> Option<Ordinal> {
+        pub fn from_str(input: &str) -> Option<Self> {
             let input: &str = &input.to_lowercase();
             match input {
-                "primer" => Some(Ordinal::First),
-                "segundo" => Some(Ordinal::Second),
-                "tercer" => Some(Ordinal::Third),
-                "cuarto" => Some(Ordinal::Fourth),
-                "último" | "ultimo" => Some(Ordinal::Last),
+                "primer" => Some(Self::First),
+                "segundo" => Some(Self::Second),
+                "tercer" => Some(Self::Third),
+                "cuarto" => Some(Self::Fourth),
+                "último" | "ultimo" => Some(Self::Last),
                 _ => None,
             }
         }
@@ -235,14 +234,13 @@ pub mod helper {
                 Ordinal::First => 1,
                 Ordinal::Second => 2,
                 Ordinal::Third => 3,
-                Ordinal::Fourth => 4,
-                Ordinal::Last => 4,
+                Ordinal::Fourth | Ordinal::Last => 4,
             }
         }
     }
 
     impl Days {
-        pub fn none() -> Self {
+        pub const fn none() -> Self {
             Self {
                 domingo: false,
                 lunes: false,
@@ -254,13 +252,7 @@ pub mod helper {
             }
         }
 
-        pub fn single(day: Weekday) -> Self {
-            let mut days = Self::none();
-            days.insert(day);
-            days
-        }
-
-        pub fn insert(&mut self, day: Weekday) {
+        pub const fn insert(&mut self, day: Weekday) {
             match day {
                 Weekday::Domingo => self.domingo = true,
                 Weekday::Lunes => self.lunes = true,
@@ -272,13 +264,7 @@ pub mod helper {
             }
         }
 
-        pub fn insert_array(&mut self, days: &[Weekday]) {
-            for day in days {
-                self.insert(*day);
-            }
-        }
-
-        pub fn contains(&self, day: Weekday) -> bool {
+        pub const fn contains(self, day: Weekday) -> bool {
             match day {
                 Weekday::Domingo => self.domingo,
                 Weekday::Lunes => self.lunes,
@@ -305,19 +291,6 @@ pub mod helper {
         Reference(crate::parser::reference::Reference),
         Alarm(alarm::Alarm),
         AlarmSchedule(alarm::AlarmSchedule),
-    }
-
-    impl Node {
-        pub fn is_reference(&self) -> bool {
-            matches!(self, Self::Reference(_))
-        }
-
-        pub fn target(&self) -> Result<&str, errors::Error> {
-            let Node::Reference(reference) = self else {
-                return Err(errors::Error::Type);
-            };
-            Ok(reference.target())
-        }
     }
 }
 
@@ -397,7 +370,7 @@ pub mod weekly {
 
             if line.parts().len() < 2 {
                 return Err(errors::Error::Syntax);
-            };
+            }
 
             let (days, time_part) = line.parts().split_at(line.parts().len() - 1);
             let time = time::parse_time(time_part[0])?;
@@ -439,7 +412,7 @@ pub mod monthly {
     }
 
     impl MonthlyRule {
-        pub fn day_of_month(date: u8) -> Self {
+        pub const fn day_of_month(date: u8) -> Self {
             Self::DayOfMonth(date)
         }
 
@@ -528,11 +501,10 @@ pub mod yearly {
     #[derive(Debug, Clone, Copy)]
     pub enum YearlyRule {
         DayMonth(u8, u8),
-        NthWeekday(helper::Weekday, u8),
     }
 
     impl YearlyRule {
-        pub fn new_day_month(date: time::DateSpec) -> Self {
+        pub const fn new_day_month(date: time::DateSpec) -> Self {
             Self::DayMonth(date.day, date.month)
         }
     }
@@ -569,7 +541,6 @@ pub mod yearly {
 
 pub mod time {
     use crate::errors;
-    use chrono::Datelike;
     #[derive(Debug, Clone, Copy)]
     pub struct DateSpec {
         pub year: u16,
@@ -603,11 +574,17 @@ pub mod time {
         pub minute: u8,
     }
 
+    impl TimeSpec {
+        pub const fn new(hour: u8, minute: u8) -> Self {
+            Self { hour, minute }
+        }
+    }
+
     #[derive(Debug, Clone, Copy)]
     pub struct DateTimeSpec(DateSpec, TimeSpec);
 
     impl DateSpec {
-        pub fn zero() -> Self {
+        pub const fn zero() -> Self {
             Self {
                 year: 0,
                 month: 0,
@@ -615,20 +592,11 @@ pub mod time {
             }
         }
 
-        pub fn new(day: u8, month: u8, year: u16) -> Self {
-            Self { day, month, year }
+        pub const fn new(day: u8, month: u8, year: u16) -> Self {
+            Self { year, month, day }
         }
 
-        pub fn current() -> Self {
-            let date = chrono::Local::now();
-            Self {
-                day: date.day() as u8,
-                month: date.month() as u8,
-                year: date.year() as u16,
-            }
-        }
-
-        pub fn month_and_year_agnostic(day: u8) -> Self {
+        pub const fn month_and_year_agnostic(day: u8) -> Self {
             Self {
                 day,
                 month: 0u8,
@@ -636,7 +604,7 @@ pub mod time {
             }
         }
 
-        pub fn year_agnostic(day: u8, month: u8) -> Self {
+        pub const fn year_agnostic(day: u8, month: u8) -> Self {
             Self {
                 day,
                 month,
@@ -645,26 +613,12 @@ pub mod time {
         }
     }
 
-    impl TimeSpec {
-        pub fn zero() -> Self {
-            Self { hour: 0, minute: 0 }
-        }
-
-        pub fn new(hour: u8, minute: u8) -> Self {
-            Self { hour, minute }
-        }
-    }
-
     impl DateTimeSpec {
-        pub fn new(minute: u8, hour: u8, day: u8, month: u8, year: u16) -> Self {
-            (TimeSpec { minute, hour }, DateSpec { day, month, year }).into()
-        }
-
-        pub fn time(&self) -> TimeSpec {
+        pub const fn time(self) -> TimeSpec {
             self.1
         }
 
-        pub fn date(&self) -> DateSpec {
+        pub const fn date(self) -> DateSpec {
             self.0
         }
     }
@@ -696,14 +650,6 @@ pub mod alarm {
     }
 
     impl AlarmType {
-        pub fn new() -> Self {
-            Self::Default
-        }
-
-        pub fn new_personalized(string: String) -> Self {
-            Self::Personalized(string)
-        }
-
         pub fn kind_text(&self) -> Cow<'_, str> {
             match self {
                 Self::Default => Cow::Borrowed("default"),
@@ -732,7 +678,7 @@ pub mod alarm {
             &self.name
         }
 
-        pub fn kind(&self) -> &AlarmType {
+        pub const fn kind(&self) -> &AlarmType {
             &self.kind
         }
     }
@@ -744,15 +690,15 @@ pub mod alarm {
     }
 
     impl AlarmSchedule {
-        pub fn new(at: Option<time::DateTimeSpec>, repeat: helper::RepeatSpec) -> Self {
+        pub const fn new(at: Option<time::DateTimeSpec>, repeat: helper::RepeatSpec) -> Self {
             Self { at, repeat }
         }
 
-        pub fn at(&self) -> Option<time::DateTimeSpec> {
+        pub const fn at(&self) -> Option<time::DateTimeSpec> {
             self.at
         }
 
-        pub fn repeat(&self) -> helper::RepeatSpec {
+        pub const fn repeat(&self) -> helper::RepeatSpec {
             self.repeat
         }
     }
@@ -763,18 +709,17 @@ pub mod alarm {
         fn handle(&self, input: parseable::Input) -> Result<Option<helper::Node>, errors::Error> {
             let input = input.trim();
 
-            let rest = match input
+            let Some(rest) = input
                 .strip_prefix("alarm:")
                 .or_else(|| input.strip_prefix("title:"))
                 .map(str::trim)
-            {
-                Some(rest) => rest,
-                None => return Ok(None),
+            else {
+                return Ok(None);
             };
 
             if rest.is_empty() {
                 return Err(errors::Error::Syntax);
-            };
+            }
 
             let (name, kind) = if let Some(open) = helper::find_last_unescaped(rest, '(') {
                 let name = rest[..open].trim();
@@ -819,7 +764,7 @@ pub mod reference {
     }
 
     impl Reference {
-        pub fn new(target: String) -> Self {
+        pub const fn new(target: String) -> Self {
             Self { target }
         }
 
@@ -863,7 +808,6 @@ pub mod file {
 
     #[derive(Debug)]
     pub struct ParsedFile {
-        kind: FileType,
         alarms: Vec<helper::Node>,
         references: Vec<reference::Reference>,
         errors: Vec<errors::LineError>,
@@ -876,11 +820,7 @@ pub mod file {
     }
 
     impl ParsedFile {
-        pub fn new(
-            kind: FileType,
-            nodes: Vec<helper::Node>,
-            errors: Vec<errors::LineError>,
-        ) -> Self {
+        pub fn new(nodes: Vec<helper::Node>, errors: Vec<errors::LineError>) -> Self {
             let (references, alarms) = nodes.into_iter().fold(
                 (
                     Vec::<reference::Reference>::new(),
@@ -895,7 +835,6 @@ pub mod file {
                 },
             );
             Self {
-                kind,
                 alarms,
                 references,
                 errors,
@@ -906,10 +845,6 @@ pub mod file {
             let contents = std::fs::read_to_string(path)
                 .map_err(|_| errors::Error::reference_not_found(path.display().to_string()))?;
             Ok(contents.as_str().into())
-        }
-
-        pub fn kind(&self) -> FileType {
-            self.kind
         }
 
         pub fn alarms(&self) -> &[helper::Node] {
@@ -924,22 +859,8 @@ pub mod file {
             &self.errors
         }
 
-        pub fn is_clean(&self) -> bool {
+        pub const fn is_clean(&self) -> bool {
             self.errors.is_empty()
-        }
-
-        pub fn add_node(&mut self, node: helper::Node) {
-            if let helper::Node::Reference(reference) = node {
-                self.references.push(reference);
-                return;
-            }
-            self.alarms.push(node);
-        }
-
-        pub fn add_nodes(&mut self, nodes: Vec<helper::Node>) {
-            for node in nodes {
-                self.add_node(node);
-            }
         }
     }
 
@@ -958,14 +879,14 @@ pub mod file {
 
 #[cfg(test)]
 mod tests {
-    use super::alarm::{Alarm, AlarmParser, AlarmSchedule, AlarmType};
+    use super::alarm::{AlarmParser, AlarmType};
     use super::daily::DailyParser;
     use super::helper::{self, Days, Node, Ordinal, RepeatSpec, ScheduleType, Weekday};
     use super::monthly::{MonthlyParser, MonthlyRule};
     use super::once::OnceScheduler;
     use super::parseable::Parseable;
     use super::reference::ReferenceParser;
-    use super::time::{self, DateSpec, TimeSpec};
+    use super::time;
     use super::weekly::WeeklyParser;
     use super::yearly::{YearlyParser, YearlyRule};
     use crate::errors::Error;
